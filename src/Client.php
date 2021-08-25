@@ -186,7 +186,7 @@ class Client implements ClientInterface
    * {@inheritdoc}
    * @throws Exception
    */
-  public function signData(string $data, string $keyData, string $password): string
+  public function signData(string $data, string $keyData, string $password, bool $isExternalSign = false, bool $appendCert = true): string
   {
     $this->handleResult('ctxcreate', euspe_ctxcreate($context, $iErrorCode), $iErrorCode);
     $this->handleResult(
@@ -201,7 +201,7 @@ class Client implements ClientInterface
     );
     $this->handleResult(
       'ctxsigndata',
-      euspe_ctxsigndata($pkContext, EU_CTX_SIGN_DSTU4145_WITH_GOST34311, $data, true, true, $sSign, $iErrorCode),
+      euspe_ctxsigndata($pkContext, EU_CTX_SIGN_DSTU4145_WITH_GOST34311, $data, $isExternalSign, $appendCert, $sSign, $iErrorCode),
       $iErrorCode
     );
     $this->handleResult(
