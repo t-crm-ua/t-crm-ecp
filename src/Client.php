@@ -15,7 +15,7 @@ class Client implements ClientInterface
    * @return bool
    * @throws Exception
    */
-  private function handleResult(
+  protected function handleResult(
     string $command,
     $iResult,
     int $iErrorCode = null,

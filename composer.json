@@ -1,6 +1,7 @@
 {
   "name": "krl-smirnov/eusphpe-php",
   "description": "PHP library for EUSPHPE",
+  "license": "MIT",
   "repositories": [
     {
       "type": "vcs",
