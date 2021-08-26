@@ -21,9 +21,6 @@ class Client implements ClientInterface
     int $iErrorCode = null,
     array $aAcceptableErrorCodes = []
   ): bool {
-    if ($iResult != EM_RESULT_OK && !in_array($iErrorCode, $aAcceptableErrorCodes)) {
-      throw new \RuntimeException('Check the correctness of functions invokation order.');
-    }
     if (!empty($iErrorCode) && !in_array($iErrorCode, $aAcceptableErrorCodes)) {
       euspe_geterrdescr($iErrorCode, $sErrorDescription);
       $utfEncoding = 'utf-8';
