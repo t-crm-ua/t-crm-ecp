@@ -17,16 +17,6 @@ class ServerStorage
     $this->dir = $settingsDir;
   }
 
-  private static function getEnumHosts(): array
-  {
-    return [
-      'acskidd.gov.ua',
-      'ca.ksystems.com.ua',
-      'acsk.privatbank.ua',
-      'ca.iit.com.ua',
-    ];
-  }
-
   /**
    * Host is allowed from the list.
    * @param string $host
@@ -34,7 +24,7 @@ class ServerStorage
    */
   public static function verifyHost(string $host): bool
   {
-    return in_array($host, self::getEnumHosts());
+    return in_array($host, array_keys(ACSKEnum::ACKS_TYPES));
   }
 
   /**
