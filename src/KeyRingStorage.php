@@ -4,6 +4,7 @@ namespace AndrewSvirin\EUSPE;
 
 use Exception;
 use AndrewSvirin\EUSPE\traits\ExpiredTrait;
+use KeyRingException;
 
 class KeyRingStorage
 {
@@ -23,7 +24,7 @@ class KeyRingStorage
     /**
      * @param  User  $user
      * @return KeyRing
-     * @throws Exception
+     * @throws \KeyDirectoryException
      */
     public function prepare(User $user): KeyRing
     {
@@ -40,7 +41,7 @@ class KeyRingStorage
     /**
      * @param  KeyRing  $keyRing
      * @param  string  $secretToken
-     * @throws Exception
+     * @throws KeyRingException
      */
     public function store(KeyRing $keyRing, string $secretToken): void
     {
@@ -49,7 +50,7 @@ class KeyRingStorage
             $encodedPrivateKeys[$key] = base64_encode($privateKey);
         }
         if (!($keys = json_encode($encodedPrivateKeys))) {
-            throw new Exception('Can not store keyRing.');
+            throw new KeyRingException('Can not store keyRing.');
         }
         $data = [
             'keys' => $this->encrypt($keys, $secretToken),
@@ -57,7 +58,7 @@ class KeyRingStorage
             'type' => $keyRing->getType(),
         ];
         if (!($dataEncoded = json_encode($data))) {
-            throw new Exception('Can not store keyRing.');
+            throw new KeyRingException('Can not store keyRing.');
         }
         file_put_contents($keyRing->getFilePath(), $dataEncoded);
     }
@@ -65,23 +66,23 @@ class KeyRingStorage
     /**
      * @param  KeyRing  $keyRing
      * @param  string  $secretToken
-     * @throws Exception
+     * @throws KeyRingException
      */
     public function load(KeyRing $keyRing, string $secretToken): void
     {
         if (!($file = file_get_contents($keyRing->getFilePath()))) {
-            throw new Exception('Can not load keyRing.');
+            throw new KeyRingException('Can not load keyRing.');
         }
         if (!($data = json_decode($file, true))) {
-            throw new Exception('Can not load keyRing.');
+            throw new KeyRingException('Can not load keyRing.');
         }
         if (!($encodedPrivateKeys = json_decode($this->decrypt($data['keys'], $secretToken)))) {
-            throw new Exception('Can not load keyRing.');
+            throw new KeyRingException('Can not load keyRing.');
         }
         $privateKeys = [];
         foreach ($encodedPrivateKeys as $key => $encodedPrivateKey) {
             if (!($privateKeys[$key] = base64_decode($encodedPrivateKey))) {
-                throw new Exception('Can not load keyRing.');
+                throw new KeyRingException('Can not load keyRing.');
             }
         }
         $keyRing->setPrivateKeys($privateKeys);
@@ -93,12 +94,12 @@ class KeyRingStorage
      * @param  string  $data  - message to encrypt
      * @param  string  $secretToken  - encryption key
      * @return string
-     * @throws Exception
+     * @throws Exception|KeyRingException
      */
     private function encrypt(string $data, string $secretToken): string
     {
         if (mb_strlen($secretToken, '8bit') !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
-            throw new Exception('Key is not the correct size (must be 32 bytes).');
+            throw new KeyRingException('Key is not the correct size (must be 32 bytes).');
         }
         $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
         $encryptedData = $nonce.sodium_crypto_secretbox($data, $nonce, $secretToken);
@@ -111,7 +112,7 @@ class KeyRingStorage
      * @param  string  $encryptedData  - message encrypted with safeEncrypt()
      * @param  string  $secretToken  - encryption key
      * @return string
-     * @throws Exception
+     * @throws KeyRingException|Exception
      */
     private function decrypt(string $encryptedData, string $secretToken): string
     {
@@ -124,7 +125,7 @@ class KeyRingStorage
             $secretToken
         );
         if (!is_string($plain)) {
-            throw new Exception('Invalid MAC');
+            throw new KeyRingException('Invalid MAC');
         }
         sodium_memzero($ciphertext);
         sodium_memzero($secretToken);
