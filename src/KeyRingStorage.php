@@ -2,9 +2,10 @@
 
 namespace AndrewSvirin\EUSPE;
 
+use AndrewSvirin\EUSPE\Exceptions\KeyDirectoryException;
 use Exception;
 use AndrewSvirin\EUSPE\traits\ExpiredTrait;
-use KeyRingException;
+use AndrewSvirin\EUSPE\Exceptions\KeyRingException;
 
 class KeyRingStorage
 {
@@ -24,7 +25,7 @@ class KeyRingStorage
     /**
      * @param  User  $user
      * @return KeyRing
-     * @throws \KeyDirectoryException
+     * @throws KeyDirectoryException
      */
     public function prepare(User $user): KeyRing
     {

@@ -1,4 +1,5 @@
 <?php
+
 namespace AndrewSvirin\EUSPE\Exceptions;
 
 use Exception;

@@ -2,8 +2,8 @@
 
 namespace AndrewSvirin\EUSPE;
 
-use CertificateDirectoryException;
-use LoadCertificateException;
+use AndrewSvirin\EUSPE\Exceptions\CertificateDirectoryException;
+use AndrewSvirin\EUSPE\Exceptions\LoadCertificateException;
 
 class Certificate
 {

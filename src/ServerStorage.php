@@ -2,10 +2,10 @@
 
 namespace AndrewSvirin\EUSPE;
 
-use ACSKServerException;
-use CertificateDirectoryException;
+use AndrewSvirin\EUSPE\Exceptions\ACSKServerException;
+use AndrewSvirin\EUSPE\Exceptions\CertificateDirectoryException;
 use AndrewSvirin\EUSPE\traits\ExpiredTrait;
-use ServerDirectoryException;
+use AndrewSvirin\EUSPE\Exceptions\ServerDirectoryException;
 
 class ServerStorage
 {

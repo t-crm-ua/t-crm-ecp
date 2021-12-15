@@ -2,7 +2,7 @@
 
 namespace AndrewSvirin\EUSPE;
 
-use CertificateDirectoryException;
+use AndrewSvirin\EUSPE\Exceptions\CertificateDirectoryException;
 use AndrewSvirin\EUSPE\traits\ExpiredTrait;
 
 class CertificateStorage

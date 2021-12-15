@@ -2,7 +2,7 @@
 
 namespace AndrewSvirin\EUSPE;
 
-use KeyDirectoryException;
+use AndrewSvirin\EUSPE\Exceptions\KeyDirectoryException;
 
 class KeyRing
 {

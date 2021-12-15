@@ -2,8 +2,8 @@
 
 namespace AndrewSvirin\EUSPE;
 
+use AndrewSvirin\EUSPE\Exceptions\ServerDirectoryException;
 use Exception;
-use ServerDirectoryException;
 
 /**
  * Class Server implements server for client configuration.

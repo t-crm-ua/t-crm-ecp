@@ -4,7 +4,7 @@ namespace AndrewSvirin\EUSPE\Exceptions;
 
 use Exception;
 
-class GetSignsCountException extends \Exception
+class GetSignsCountException extends Exception
 {
 
 }
