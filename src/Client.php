@@ -220,7 +220,7 @@ class Client implements ClientInterface
      */
     public function getSignsCount(string $sign): int
     {
-        $this->handleResult('ctxfreeprivatekey', euspe_getsignscount($sign, $iCount, $iErrorCode), $iErrorCode);
+        $this->handleResult('getsignscount', euspe_getsignscount($sign, $iCount, $iErrorCode), $iErrorCode);
         return $iCount;
     }
 
@@ -231,7 +231,7 @@ class Client implements ClientInterface
     public function getSignerInfo(string $sign, int $index): array
     {
         $this->handleResult(
-            'ctxfreeprivatekey',
+            'getsignerinfoex',
             euspe_getsignerinfoex($index, $sign, $signerInfo, $signerCert, $iErrorCode),
             $iErrorCode
         );
