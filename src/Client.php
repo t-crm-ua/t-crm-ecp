@@ -2,7 +2,15 @@
 
 namespace AndrewSvirin\EUSPE;
 
+use AndrewSvirin\EUSPE\Exceptions\GetSignerInfoException;
+use AndrewSvirin\EUSPE\Exceptions\GetSignsCountException;
+use AndrewSvirin\EUSPE\Exceptions\GetSignTimeException;
 use Exception;
+use AndrewSvirin\EUSPE\Exceptions\ExtractJKSException;
+use AndrewSvirin\EUSPE\Exceptions\ParseCertificatesException;
+use AndrewSvirin\EUSPE\Exceptions\ReadPrivateKeyException;
+use AndrewSvirin\EUSPE\Exceptions\ResetPrivateKeyException;
+use AndrewSvirin\EUSPE\Exceptions\SignDataException;
 
 class Client implements ClientInterface
 {
@@ -80,179 +88,241 @@ class Client implements ClientInterface
 
     /**
      * {@inheritdoc}
-     * @throws Exception
+     * @throws ReadPrivateKeyException
      */
     public function readPrivateKey(string $keyData, string $password): void
     {
-        $this->handleResult(
-            'readprivatekeybinary(DAT)',
-            euspe_readprivatekeybinary(
-                $keyData,
-                $password,
+        try {
+            $this->handleResult(
+                'readprivatekeybinary(DAT)',
+                euspe_readprivatekeybinary(
+                    $keyData,
+                    $password,
+                    $iErrorCode
+                ),
+                $iErrorCode,
+                [1]
+            );
+            $this->handleResult(
+                'isprivatekeyreaded',
+                euspe_isprivatekeyreaded($bIsPrivateKeyRead, $iErrorCode),
                 $iErrorCode
-            ),
-            $iErrorCode,
-            [1]
-        );
-        $this->handleResult(
-            'isprivatekeyreaded',
-            euspe_isprivatekeyreaded($bIsPrivateKeyRead, $iErrorCode),
-            $iErrorCode
-        );
-        if (!$bIsPrivateKeyRead) {
-            throw new Exception('Private key was not read.');
+            );
+            if (!$bIsPrivateKeyRead) {
+                throw new Exception('Private key was not read.');
+            }
+        } catch (Exception $exception) {
+            throw new ReadPrivateKeyException($exception->getMessage());
+        }
+        
+    }
+
+    /**
+     * {@inheritdoc}
+     * @throws ResetPrivateKeyException
+     */
+    public function resetPrivateKey(): void
+    {
+        try {
+            $this->handleResult('resetprivatekey', euspe_resetprivatekey());
+        } catch (Exception $exception) {
+            throw new ResetPrivateKeyException($exception->getMessage());
         }
     }
 
     /**
      * {@inheritdoc}
-     * @throws Exception
-     */
-    public function resetPrivateKey(): void
-    {
-        $this->handleResult('resetprivatekey', euspe_resetprivatekey());
-    }
-
-    /**
-     * {@inheritdoc}
-     * @throws Exception
+     * @throws ExtractJKSException
      */
     public function retrieveJKSPrivateKeys(string $keyData): array
     {
         $privateKeys = [];
-        $this->handleResult(
-            'setruntimeparameter (RESOLVE_OIDS)',
-            euspe_setruntimeparameter(EU_RESOLVE_OIDS_PARAMETER, false, $iErrorCode),
-            $iErrorCode
-        );
-        $iKeyIndex = 0;
-        while (true) {
+    
+        try {
             $this->handleResult(
-                'enumjksprivatekeys',
-                euspe_enumjksprivatekeys(
-                    $keyData,
-                    $iKeyIndex,
-                    $sKeyAlias,
-                    $iErrorCode
-                ),
-                $iErrorCode,
-                [EU_WARNING_END_OF_ENUM]
-            );
-            $iKeyIndex++;
-            if (EU_WARNING_END_OF_ENUM === $iErrorCode) {
-                break;
-            }
-            $this->handleResult(
-                'getjksprivatekey',
-                euspe_getjksprivatekey(
-                    $keyData,
-                    $sKeyAlias,
-                    $sPrivateKeyData,
-                    $aCertificates,
-                    $iErrorCode
-                ),
+                'setruntimeparameter (RESOLVE_OIDS)',
+                euspe_setruntimeparameter(EU_RESOLVE_OIDS_PARAMETER, false, $iErrorCode),
                 $iErrorCode
             );
-            $privateKeys[$sKeyAlias] = $sPrivateKeyData;
+            $iKeyIndex = 0;
+            while (true) {
+                $this->handleResult(
+                    'enumjksprivatekeys',
+                    euspe_enumjksprivatekeys(
+                        $keyData,
+                        $iKeyIndex,
+                        $sKeyAlias,
+                        $iErrorCode
+                    ),
+                    $iErrorCode,
+                    [EU_WARNING_END_OF_ENUM]
+                );
+                $iKeyIndex++;
+                if (EU_WARNING_END_OF_ENUM === $iErrorCode) {
+                    break;
+                }
+                $this->handleResult(
+                    'getjksprivatekey',
+                    euspe_getjksprivatekey(
+                        $keyData,
+                        $sKeyAlias,
+                        $sPrivateKeyData,
+                        $aCertificates,
+                        $iErrorCode
+                    ),
+                    $iErrorCode
+                );
+                $privateKeys[$sKeyAlias] = $sPrivateKeyData;
+            }
+            return $privateKeys;
+        } catch (Exception $exception) {
+            throw new ExtractJKSException($exception->getMessage());
         }
-        return $privateKeys;
     }
 
     /**
      * {@inheritdoc}
-     * @throws Exception
+     * @throws ParseCertificatesException
      */
     public function parseCertificates(array $certs): array
     {
-        $parsed = [];
-        foreach ($certs as $certData) {
+        try {
+            $parsed = [];
+            foreach ($certs as $certData) {
+                $this->handleResult(
+                    'parsecert',
+                    euspe_parsecert($certData, $certInfo, $iErrorCode),
+                    $iErrorCode
+                );
+                if (EU_SUBJECT_TYPE_END_USER !== $certInfo['subjType']) {
+                    continue;
+                }
+                $parsed[] = $certInfo;
+            }
+            return $parsed;
+        } catch (Exception $exception) {
+            throw new ParseCertificatesException($exception->getMessage());
+        }
+    }
+    
+    /**
+     * {@inheritdoc}
+     * @throws ReadPrivateKeyException
+     * @throws SignDataException
+     */
+    public function signData(
+        string $data,
+        string $keyData,
+        string $password,
+        bool $isExternalSign = false,
+        bool $appendCert = true
+    ): string {
+        try {
+            $this->handleResult('ctxcreate', euspe_ctxcreate($context, $iErrorCode), $iErrorCode);
             $this->handleResult(
-                'parsecert',
-                euspe_parsecert($certData, $certInfo, $iErrorCode),
+                'ctxreadprivatekeybinary',
+                euspe_ctxreadprivatekeybinary(
+                    $context,
+                    $keyData,
+                    $password,
+                    $pkContext,
+                    $iErrorCode
+                ),
                 $iErrorCode
             );
-            if (EU_SUBJECT_TYPE_END_USER !== $certInfo['subjType']) {
-                continue;
+        } catch (Exception $exception) {
+            throw new ReadPrivateKeyException($exception->getMessage());
+        }
+        
+        try {
+            $this->handleResult(
+                'ctxsigndata',
+                euspe_ctxsigndata(
+                    $pkContext,
+                    EU_CTX_SIGN_DSTU4145_WITH_GOST34311,
+                    $data,
+                    $isExternalSign,
+                    $appendCert,
+                    $sSign,
+                    $iErrorCode
+                ),
+                $iErrorCode
+            );
+            $this->handleResult(
+                'ctxisalreadysigned',
+                euspe_ctxisalreadysigned(
+                    $pkContext,
+                    EU_CTX_SIGN_DSTU4145_WITH_GOST34311,
+                    $sSign,
+                    $bIsAlreadySigned,
+                    $iErrorCode
+                ),
+                $iErrorCode
+            );
+            if (!$bIsAlreadySigned) {
+                throw new Exception('Content not signed properly.');
             }
-            $parsed[] = $certInfo;
+            
+            $this->handleResult('ctxfreeprivatekey', euspe_ctxfreeprivatekey($pkContext));
+            $this->handleResult('ctxfree', euspe_ctxfree($context));
+            
+            return $sSign;
+        } catch (Exception $exception) {
+            throw new SignDataException($exception->getMessage());
         }
-        return $parsed;
     }
-
+    
     /**
      * {@inheritdoc}
-     * @throws Exception
-     */
-    public function signData(string $data, string $keyData, string $password, bool $isExternalSign = false, bool $appendCert = true): string
-    {
-        $this->handleResult('ctxcreate', euspe_ctxcreate($context, $iErrorCode), $iErrorCode);
-        $this->handleResult(
-            'ctxreadprivatekeybinary',
-            euspe_ctxreadprivatekeybinary(
-                $context,
-                $keyData,
-                $password,
-                $pkContext,
-                $iErrorCode),
-            $iErrorCode
-        );
-        $this->handleResult(
-            'ctxsigndata',
-            euspe_ctxsigndata($pkContext, EU_CTX_SIGN_DSTU4145_WITH_GOST34311, $data, $isExternalSign, $appendCert, $sSign, $iErrorCode),
-            $iErrorCode
-        );
-        $this->handleResult(
-            'ctxisalreadysigned',
-            euspe_ctxisalreadysigned($pkContext, EU_CTX_SIGN_DSTU4145_WITH_GOST34311, $sSign, $bIsAlreadySigned, $iErrorCode),
-            $iErrorCode
-        );
-        if (!$bIsAlreadySigned) {
-            throw new Exception('Content not signed properly.');
-        }
-        $this->handleResult('ctxfreeprivatekey', euspe_ctxfreeprivatekey($pkContext));
-        $this->handleResult('ctxfree', euspe_ctxfree($context));
-        return $sSign;
-    }
-
-    /**
-     * {@inheritdoc}
-     * @throws Exception
+     * @throws GetSignsCountException
      */
     public function getSignsCount(string $sign): int
     {
-        $this->handleResult('getsignscount', euspe_getsignscount($sign, $iCount, $iErrorCode), $iErrorCode);
-        return $iCount;
+        try {
+            $this->handleResult('getsignscount', euspe_getsignscount($sign, $iCount, $iErrorCode), $iErrorCode);
+            return $iCount;
+        } catch (Exception $exception) {
+            throw new GetSignsCountException($exception->getMessage());
+        }
     }
-
+    
     /**
      * {@inheritdoc}
-     * @throws Exception
+     * @throws GetSignerInfoException
      */
     public function getSignerInfo(string $sign, int $index): array
     {
-        $this->handleResult(
-            'getsignerinfoex',
-            euspe_getsignerinfoex($index, $sign, $signerInfo, $signerCert, $iErrorCode),
-            $iErrorCode
-        );
-        return $signerInfo;
+        try {
+            $this->handleResult(
+                'getsignerinfoex',
+                euspe_getsignerinfoex($index, $sign, $signerInfo, $signerCert, $iErrorCode),
+                $iErrorCode
+            );
+            return $signerInfo;
+        } catch (Exception $exception) {
+            throw new GetSignerInfoException($exception->getMessage());
+        }
     }
-
+    
     /**
      * @param  string  $sign
      * @param  int  $index
      * @return array|null
-     * @throws Exception
+     * @throws GetSignTimeException
      */
     public function getSignTimeInfo(string $sign, int $index)
     {
-        $this->handleResult(
-            'euspe_getsigntimeinfo',
-            euspe_getsigntimeinfo($index, $sign, $info, $iErrorCode),
-            $iErrorCode
-        );
-
-        return $info;
+        try {
+            $this->handleResult(
+                'euspe_getsigntimeinfo',
+                euspe_getsigntimeinfo($index, $sign, $info, $iErrorCode),
+                $iErrorCode
+            );
+            
+            return $info;
+        } catch (Exception $exception) {
+            throw new GetSignTimeException($exception->getMessage());
+        }
     }
 
     /**
